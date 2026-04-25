@@ -5,7 +5,7 @@ pipeline {
         APP_NAME        = 'devops-monitoring-app'
         IMAGE_TAG       = "${BUILD_NUMBER}"
         DOCKER_IMAGE    = "${APP_NAME}:${IMAGE_TAG}"
-        DOCKER_HUB_USER = 'Rishikesh1993'
+        DOCKER_HUB_USER = 'rishikesh1993'
         DEPLOY_SERVER   = 'YOUR-DEPLOY-SERVER-IP'
     }
 
