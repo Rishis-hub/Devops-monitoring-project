@@ -1,0 +1,60 @@
+---
+# Ansible Playbook — Deploy Application with Docker
+- name: Deploy Application
+  hosts: deploy_servers
+  become: yes
+  vars:
+    container_name: "{{ app_name }}"
+    app_port: 8080
+    host_port: 80
+    docker_image: "{{ docker_hub_user }}/{{ app_name }}:{{ image_tag }}"
+
+  tasks:
+
+    - name: Ensure Docker is running
+      service:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Pull latest Docker image
+      docker_image:
+        name: "{{ docker_image }}"
+        source: pull
+        force_source: yes
+
+    - name: Stop existing container
+      docker_container:
+        name: "{{ container_name }}"
+        state: stopped
+      ignore_errors: yes
+
+    - name: Remove old container
+      docker_container:
+        name: "{{ container_name }}"
+        state: absent
+      ignore_errors: yes
+
+    - name: Start new container
+      docker_container:
+        name: "{{ container_name }}"
+        image: "{{ docker_image }}"
+        state: started
+        restart_policy: always
+        ports:
+          - "{{ host_port }}:{{ app_port }}"
+        labels:
+          monitoring: "true"
+
+    - name: Wait for app to be ready
+      uri:
+        url: "http://localhost:{{ host_port }}/health"
+        status_code: 200
+      retries: 10
+      delay: 10
+      register: result
+      until: result.status == 200
+
+    - name: Deployment success
+      debug:
+        msg: "✅ App {{ app_name }}:{{ image_tag }} deployed successfully!"
