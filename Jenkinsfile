@@ -20,7 +20,7 @@ pipeline {
             steps {
                 echo '========== Stage: Checkout =========='
                 git branch: 'main',
-                    url: 'https://github.com/Rishis-hub/devops-monitoring-project.git'
+                    url: 'https://github.com/Rishis-hub/Devops-monitoring-project.git'
             }
         }
 
