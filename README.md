@@ -125,10 +125,13 @@ bash scripts/install-monitoring.sh
 ## 🖼️ Screenshots
 
 ### Jenkins Pipeline
-![Jenkins Pipeline](screenshots/jenkins-pipeline.png)
+![Jenkins Pipeline](Jenkins.png)
+
+### Prometheus Targets
+![Prometheus](Prometheus.png)
 
 ### Grafana Dashboard
-![Grafana Dashboard](screenshots/grafana-dashboard.png)
+![Grafana Dashboard](Grafana.png)
 
 ---
 
