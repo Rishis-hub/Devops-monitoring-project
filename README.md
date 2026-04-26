@@ -139,5 +139,5 @@ bash scripts/install-monitoring.sh
 
 **Rishikesh Rawate** — DevOps Engineer
 📧 rawaterishikesh@gmail.com
-🔗 [LinkedIn](https://linkedin.com/in/YOUR-LINKEDIN)
+🔗 [LinkedIn](www.linkedin.com/in/rishikesh-rawate-5097761a0)
 🐙 [GitHub](https://github.com/Rishis-hub)
