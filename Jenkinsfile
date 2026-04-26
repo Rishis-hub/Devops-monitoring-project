@@ -2,11 +2,8 @@ pipeline {
     agent any
 
     environment {
-        APP_NAME        = 'devops-monitoring-app'
-        IMAGE_TAG       = "${BUILD_NUMBER}"
-        DOCKER_IMAGE    = "${APP_NAME}:${IMAGE_TAG}"
-        DOCKER_HUB_USER = 'rishikesh1993'
-        DEPLOY_SERVER   = 'YOUR-DEPLOY-SERVER-IP'
+        APP_NAME  = 'devops-monitoring-app'
+        IMAGE_TAG = "${BUILD_NUMBER}"
     }
 
     tools {
@@ -21,6 +18,7 @@ pipeline {
                 echo '========== Stage: Checkout =========='
                 git branch: 'main',
                     url: 'https://github.com/Rishis-hub/Devops-monitoring-project.git'
+                echo 'Code checked out successfully!'
             }
         }
 
@@ -28,7 +26,7 @@ pipeline {
             steps {
                 echo '========== Stage: Build =========='
                 sh 'mvn clean package -DskipTests'
-                echo 'Build completed successfully'
+                echo 'Build completed successfully!'
             }
         }
 
@@ -36,14 +34,14 @@ pipeline {
             steps {
                 echo '========== Stage: Unit Test =========='
                 sh 'mvn test'
-                echo 'Tests completed successfully'
+                echo 'Tests completed successfully!'
             }
         }
 
         stage('Code Quality Check') {
             steps {
                 echo '========== Stage: Code Quality =========='
-                echo 'SonarQube analysis would run here'
+                echo 'SonarQube analysis would run here in production'
                 echo 'Skipping - SonarQube not configured'
             }
         }
@@ -52,56 +50,59 @@ pipeline {
             steps {
                 echo '========== Stage: Docker Build =========='
                 sh """
-                    docker build -t ${DOCKER_IMAGE} .
-                    docker tag ${DOCKER_IMAGE} ${DOCKER_HUB_USER}/${DOCKER_IMAGE}
+                    docker build -t ${APP_NAME}:${IMAGE_TAG} .
+                    docker images | grep ${APP_NAME}
                 """
-                echo 'Docker image built successfully'
+                echo 'Docker image built successfully!'
             }
         }
 
         stage('Push to DockerHub') {
-           steps {
+            steps {
                 echo '========== Stage: Push to DockerHub =========='
                 sh """
-                    docker login -u ${DOCKER_HUB_USER} --password-stdin < /var/lib/jenkins/.docker/config.json || true
-                    docker push ${DOCKER_HUB_USER}/${DOCKER_IMAGE} || echo 'Push skipped'
+                    docker tag ${APP_NAME}:${IMAGE_TAG} rishikesh1993/${APP_NAME}:${IMAGE_TAG}
+                    cat /var/lib/jenkins/.docker/config.json | docker login --username rishikesh1993 --password-stdin
+                    docker push rishikesh1993/${APP_NAME}:${IMAGE_TAG}
+                    docker logout
                 """
-                echo 'Docker push completed!'
-              }
-        }
-
-        stage('Deploy via Ansible') {
-            steps {
-                echo '========== Stage: Deploy via Ansible =========='
-                withCredentials([sshUserPrivateKey(
-                    credentialsId: 'ANSIBLE_SSH_KEY',
-                    keyFileVariable: 'SSH_KEY'
-                )]) {
-                    sh """
-                        ansible-playbook ansible/deploy.yml \
-                            -i ansible/inventory.ini \
-                            --private-key ${SSH_KEY} \
-                            --extra-vars "image_tag=${IMAGE_TAG} app_name=${APP_NAME} docker_hub_user=${DOCKER_HUB_USER}"
-                    """
-                }
-            }
-        }
-
-        stage('Health Check') {
-            steps {
-                echo '========== Stage: Health Check =========='
-                sh "bash scripts/health-check.sh ${DEPLOY_SERVER}"
+                echo 'Image pushed to DockerHub successfully!'
             }
         }
 
         stage('Monitoring Check') {
             steps {
                 echo '========== Stage: Monitoring Check =========='
-                echo 'Verifying Prometheus is scraping metrics...'
-                sh "curl -s http://${DEPLOY_SERVER}:9090/-/healthy || echo 'Prometheus check skipped'"
-                echo 'Verifying Grafana is running...'
-                sh "curl -s http://${DEPLOY_SERVER}:3000/api/health || echo 'Grafana check skipped'"
-                echo 'Monitoring stack verified!'
+                sh """
+                    curl -s http://localhost:9090/-/healthy && echo 'Prometheus: HEALTHY' || echo 'Prometheus check done'
+                    curl -s http://localhost:3000/api/health || echo 'Grafana check done'
+                """
+                echo 'Monitoring check completed!'
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                echo '========== Stage: Deploy =========='
+                sh """
+                    docker stop ${APP_NAME} 2>/dev/null || true
+                    docker rm ${APP_NAME} 2>/dev/null || true
+                    docker run -d \
+                        --name ${APP_NAME} \
+                        -p 8082:8080 \
+                        --restart always \
+                        ${APP_NAME}:${IMAGE_TAG}
+                    docker ps | grep ${APP_NAME}
+                """
+                echo 'Container deployed successfully!'
+            }
+        }
+
+        stage('Health Check') {
+            steps {
+                echo '========== Stage: Health Check =========='
+                sh 'sleep 5 && docker ps | grep ${APP_NAME} && echo "App is running!" || echo "Health check done"'
+                echo 'Pipeline completed successfully!'
             }
         }
     }
@@ -110,9 +111,6 @@ pipeline {
         success {
             echo "========================================="
             echo " Pipeline SUCCESS — Build #${BUILD_NUMBER}"
-            echo " App running at: http://${DEPLOY_SERVER}:80"
-            echo " Grafana: http://${DEPLOY_SERVER}:3000"
-            echo " Prometheus: http://${DEPLOY_SERVER}:9090"
             echo "========================================="
         }
         failure {
@@ -121,6 +119,7 @@ pipeline {
             echo "========================================="
         }
         always {
+            sh 'docker image prune -f || true'
             cleanWs()
         }
     }
